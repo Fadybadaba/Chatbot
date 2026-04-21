@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createHrRouter = createHrRouter;
 const express_1 = require("express");
 const approvedCvsStore_1 = require("./approvedCvsStore");
+const ratingsStore_1 = require("./ratingsStore");
 function requireHrDashboardPassword(req, res) {
     const expected = (process.env.HR_DASHBOARD_PASSWORD || '').trim();
     if (!expected) {
@@ -68,6 +69,54 @@ function createHrRouter() {
             const wantsDownload = String(req.query.download || '') === '1';
             res.setHeader('Content-Disposition', `${wantsDownload ? 'attachment' : 'inline'}; filename=\"${record.fileName.replace(/\"/g, '')}\"`);
             res.send(record.pdfBytes);
+        }
+        catch (err) {
+            next(err);
+        }
+    });
+    router.get('/chat-ratings/summary', async (req, res, next) => {
+        try {
+            const role = req.user?.role;
+            if (role !== 'hr' && role !== 'admin') {
+                res.status(403).json({ error: 'Only HR can view ratings' });
+                return;
+            }
+            if (!requireHrDashboardPassword(req, res))
+                return;
+            res.json(await (0, ratingsStore_1.getChatRatingsSummary)());
+        }
+        catch (err) {
+            next(err);
+        }
+    });
+    router.get('/chat-ratings', async (req, res, next) => {
+        try {
+            const role = req.user?.role;
+            if (role !== 'hr' && role !== 'admin') {
+                res.status(403).json({ error: 'Only HR can view ratings' });
+                return;
+            }
+            if (!requireHrDashboardPassword(req, res))
+                return;
+            res.json(await (0, ratingsStore_1.listChatRatings)());
+        }
+        catch (err) {
+            next(err);
+        }
+    });
+    router.get('/chat-ratings/export', async (req, res, next) => {
+        try {
+            const role = req.user?.role;
+            if (role !== 'hr' && role !== 'admin') {
+                res.status(403).json({ error: 'Only HR can view ratings' });
+                return;
+            }
+            if (!requireHrDashboardPassword(req, res))
+                return;
+            const data = await (0, ratingsStore_1.listChatRatings)();
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Content-Disposition', 'attachment; filename=\"chat_ratings.json\"');
+            res.send(JSON.stringify(data, null, 2));
         }
         catch (err) {
             next(err);

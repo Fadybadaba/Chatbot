@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn src/server.ts",
-    "build": "tsc",
+    "build": "node scripts/compile-tsc.cjs",
     "start": "node dist/server.js"
   },
   "dependencies": {

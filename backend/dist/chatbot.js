@@ -10,7 +10,7 @@ const pdf_parse_1 = require("pdf-parse");
 const email_1 = require("./email");
 const approvedCvsStore_1 = require("./approvedCvsStore");
 const aiChat_1 = require("./aiChat");
-const cvScreening_1 = require("./cvScreening");
+const ratingsStore_1 = require("./ratingsStore");
 // In-memory store for demo / skeleton purposes.
 const sessions = new Map();
 const messages = new Map();
@@ -21,10 +21,89 @@ const cvUpload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
 });
+function extractYearsFromText(text) {
+    const normalized = text.toLowerCase();
+    const found = [];
+    // Patterns like "6 years experience", "8+ years", "4 yrs exp", "exp: 5 years"
+    for (const m of normalized.matchAll(/(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b(?:\s+experience|\s+exp)?/gi)) {
+        const n = Number(m[1]);
+        if (!Number.isNaN(n))
+            found.push(n);
+    }
+    for (const m of normalized.matchAll(/(?:experience|exp\.?)\s*[:\-]?\s*(\d{1,2})\s*\+?\s*(?:years?|yrs?)/gi)) {
+        const n = Number(m[1]);
+        if (!Number.isNaN(n))
+            found.push(n);
+    }
+    return found.length ? Math.max(...found) : null;
+}
+function keywordExists(text, keyword) {
+    return text.toLowerCase().includes(keyword.toLowerCase());
+}
 function extractFirstEmail(text) {
     // Simple email matcher (good enough for CV text).
     const m = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
     return m ? m[0] : null;
+}
+function evaluateCvForJob(extractedText, jobTitle) {
+    const text = extractedText.toLowerCase();
+    const years = extractYearsFromText(extractedText);
+    const reasons = [];
+    const bonusHits = [];
+    let bonusPoints = 0;
+    if (jobTitle === 'Senior Full-Stack Developer') {
+        if (!keywordExists(text, 'python'))
+            reasons.push('Missing mandatory keyword: Python');
+        if (!keywordExists(text, 'react'))
+            reasons.push('Missing mandatory keyword: React');
+        if (years === null || years < 5)
+            reasons.push(`Experience requirement not met (need ≥ 5 years, found ${years ?? 'not detected'})`);
+        if (keywordExists(text, 'aws')) {
+            bonusPoints += 10;
+            bonusHits.push('AWS (+10%)');
+        }
+        if (keywordExists(text, 'docker')) {
+            bonusPoints += 10;
+            bonusHits.push('Docker (+10%)');
+        }
+    }
+    if (jobTitle === 'Talent Acquisition Lead (HR)') {
+        const hasHrCert = /\bshrm\b/i.test(text) || /\bphri\b/i.test(text);
+        if (!hasHrCert)
+            reasons.push('Missing mandatory credential keyword: SHRM or PHRi');
+        if (years === null || years < 4)
+            reasons.push(`Experience requirement not met (need ≥ 4 years, found ${years ?? 'not detected'})`);
+        if (keywordExists(text, 'payroll')) {
+            bonusPoints += 10;
+            bonusHits.push('Payroll (+10%)');
+        }
+        if (keywordExists(text, 'linkedin recruiter')) {
+            bonusPoints += 10;
+            bonusHits.push('LinkedIn Recruiter (+10%)');
+        }
+    }
+    if (jobTitle === 'Senior Financial Analyst') {
+        const hasFinCert = /\bcma\b/i.test(text) || /\bcfa\b/i.test(text);
+        if (!hasFinCert)
+            reasons.push('Missing mandatory credential keyword: CMA or CFA');
+        if (years === null || years < 8)
+            reasons.push(`Experience requirement not met (need ≥ 8 years, found ${years ?? 'not detected'})`);
+        if (keywordExists(text, 'oracle') || keywordExists(text, 'sap')) {
+            bonusPoints += 15;
+            bonusHits.push('Oracle or SAP (+15%)');
+        }
+    }
+    const approved = reasons.length === 0;
+    const score = approved ? Math.min(100, 70 + bonusPoints) : null;
+    return {
+        jobTitle,
+        approved,
+        yearsDetected: years,
+        reasons,
+        bonusPoints,
+        bonusHits,
+        score,
+    };
 }
 async function extractTextFromPdfBuffer(fileBuffer) {
     const parser = new pdf_parse_1.PDFParse({ data: fileBuffer });
@@ -33,6 +112,33 @@ async function extractTextFromPdfBuffer(fileBuffer) {
 }
 function createChatRouter() {
     const router = (0, express_1.Router)();
+    router.post('/rating', async (req, res, next) => {
+        try {
+            const authReq = req;
+            const userId = authReq.user?.id || 'anonymous';
+            const { sessionId, stars } = req.body;
+            const s = Number(stars);
+            if (!sessionId || typeof sessionId !== 'string') {
+                res.status(400).json({ error: 'sessionId is required' });
+                return;
+            }
+            if (!Number.isInteger(s) || s < 1 || s > 5) {
+                res.status(400).json({ error: 'stars must be an integer 1..5' });
+                return;
+            }
+            await (0, ratingsStore_1.addChatRating)({
+                id: generateId('rate'),
+                sessionId,
+                userId,
+                stars: s,
+                createdAt: new Date().toISOString(),
+            });
+            res.json({ ok: true });
+        }
+        catch (err) {
+            next(err);
+        }
+    });
     router.post('/messages', async (req, res, next) => {
         try {
             // Narrow the request type to include the optional `user` property
@@ -137,14 +243,14 @@ function createChatRouter() {
                 res.json({ sessionId: session.id, text: botReplyText });
                 return;
             }
-            const e = (0, cvScreening_1.evaluateCvForJob)(extractedText, selectedJob);
+            const e = evaluateCvForJob(extractedText, selectedJob);
             // If rejected for selected job, try other jobs and suggest best fit.
             const otherJobs = [
                 'Senior Full-Stack Developer',
                 'Talent Acquisition Lead (HR)',
                 'Senior Financial Analyst',
             ].filter(j => j !== selectedJob);
-            const alternatives = otherJobs.map(j => (0, cvScreening_1.evaluateCvForJob)(extractedText, j));
+            const alternatives = otherJobs.map(j => evaluateCvForJob(extractedText, j));
             const approvedAlternatives = alternatives.filter(a => a.approved);
             let emailNote = '';
             if (e.approved) {
