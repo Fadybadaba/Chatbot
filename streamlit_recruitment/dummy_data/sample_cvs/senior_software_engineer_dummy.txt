@@ -1,0 +1,19 @@
+ALEX RIVERA
+Senior Software Engineer
+alex.rivera.dummy@example.com | +20 100 000 0000
+
+SUMMARY
+Backend engineer with 7 years of experience building APIs and cloud-native services.
+Strong Python ecosystem experience; comfortable with Django and AWS.
+
+EXPERIENCE
+TechNova — Senior Software Engineer (2019–Present)
+• 7 years of experience designing REST APIs in Python and Django.
+• Deployed services on AWS (ECS, Lambda, RDS).
+• Containerized workloads with Docker for CI/CD pipelines.
+
+EDUCATION
+B.Sc. Computer Science — Example University (2016)
+
+SKILLS
+Python, Django, AWS, Docker, PostgreSQL, Git
