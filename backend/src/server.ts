@@ -6,10 +6,10 @@ dotenv.config({
   path: path.resolve(__dirname, '../.env'),
 });
 
-import { createApp } from './app';
+import app from './app';
 
-// Local/dev server entrypoint. Vercel uses `api/index.ts` instead.
-const app = createApp();
+// Local/dev server entrypoint. Vercel uses the default export from `app.ts`
+// when Root Directory is `backend`, or `api/index.ts` at the repo root.
 
 const port = process.env.PORT || 4000;
 

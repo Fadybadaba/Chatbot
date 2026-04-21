@@ -9,10 +9,10 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config({
     path: path_1.default.resolve(__dirname, '../.env'),
 });
-const app_1 = require("./app");
-// Local/dev server entrypoint. Vercel uses `api/index.ts` instead.
-const app = (0, app_1.createApp)();
+const app_1 = __importDefault(require("./app"));
+// Local/dev server entrypoint. Vercel uses the default export from `app.ts`
+// when Root Directory is `backend`, or `api/index.ts` at the repo root.
 const port = process.env.PORT || 4000;
-app.listen(port, () => {
+app_1.default.listen(port, () => {
     console.log(`Recruitment chatbot backend listening on port ${port}`);
 });

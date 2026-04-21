@@ -20,3 +20,7 @@ export function createApp() {
   return app;
 }
 
+// Vercel (Root Directory = backend) auto-detects `src/app.ts` and requires a
+// default export that is the Express app (or a Node handler).
+const app = createApp();
+export default app;
