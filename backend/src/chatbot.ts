@@ -1,6 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { PDFParse } from 'pdf-parse';
 import { sendApprovedEmail } from './email';
 import { addApprovedCv, JobKey, sha256Pdf } from './approvedCvsStore';
 import { aiChat, isAiChatConfigured } from './aiChat';
@@ -135,6 +134,7 @@ function evaluateCvForJob(extractedText: string, jobTitle: JobKey) {
 }
 
 async function extractTextFromPdfBuffer(fileBuffer: Buffer): Promise<string> {
+  const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: fileBuffer });
   const parsed = await parser.getText();
   return (parsed.text || '').toString();
