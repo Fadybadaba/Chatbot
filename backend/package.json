@@ -5,12 +5,19 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn src/server.ts",
-    "build": "node scripts/compile-tsc.cjs",
-    "start": "node dist/server.js"
+    "build": "node scripts/compile-tsc.cjs && prisma generate",
+    "start": "node dist/server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:pull": "prisma db pull"
   },
   "dependencies": {
-    "@types/nodemailer": "^7.0.11",
+    "@prisma/client": "5.22.0",
     "@supabase/supabase-js": "^2.56.0",
+    "@types/nodemailer": "^7.0.11",
     "body-parser": "*",
     "cors": "*",
     "dotenv": "^17.3.1",
@@ -26,6 +33,7 @@
     "@types/express": "*",
     "@types/multer": "*",
     "@types/node": "*",
+    "prisma": "5.22.0",
     "ts-node-dev": "*",
     "typescript": "*"
   }

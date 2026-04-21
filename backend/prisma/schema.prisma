@@ -1,0 +1,42 @@
+// Prisma schema — mirrors `supabase/schema.sql`.
+// Set DATABASE_URL to Supabase *direct* Postgres (port 5432) for `migrate dev` / `migrate deploy`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ChatRating {
+  id        String   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  sessionId String   @map("session_id")
+  userId    String   @map("user_id")
+  stars     Int
+
+  @@index([createdAt(sort: Desc)], map: "chat_ratings_created_at_idx")
+  @@map("chat_ratings")
+}
+
+model ApprovedCv {
+  id                   String   @id
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  jobTitle             String   @map("job_title")
+  candidateEmail       String?  @map("candidate_email")
+  score                Int?     @map("score")
+  yearsDetected        Int?     @map("years_detected")
+  fileName             String   @map("file_name")
+  fileSizeKb           Int      @map("file_size_kb")
+  sessionId            String   @map("session_id")
+  uploadedByUserId     String   @map("uploaded_by_user_id")
+  extractedTextPreview String   @map("extracted_text_preview")
+  pdfSha256            String   @map("pdf_sha256")
+  storageBucket        String   @default("approved-cvs") @map("storage_bucket")
+  storagePath          String   @map("storage_path")
+
+  @@index([createdAt(sort: Desc)], map: "approved_cvs_created_at_idx")
+  @@map("approved_cvs")
+}
