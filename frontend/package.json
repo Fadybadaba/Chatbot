@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "node scripts/run-vite-build.cjs"
   },
   "dependencies": {
     "react": "*",
