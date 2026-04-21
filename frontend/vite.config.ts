@@ -53,10 +53,16 @@ export default defineConfig(({ command, isPreview }) => {
     maybeSpawnBackend();
   }
 
+  const thisDir = path.dirname(fileURLToPath(import.meta.url));
+  // Production deploy (Vercel): write to repo-root `public/` so static files are not
+  // confused with the Express "output directory" (see root vercel.json).
+  const outDir = path.resolve(thisDir, '../public');
+
   return {
     plugins: [react()],
     build: {
-      outDir: 'dist',
+      outDir,
+      emptyOutDir: true,
     },
     server: {
       proxy: {

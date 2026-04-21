@@ -12,6 +12,9 @@ backend/node_modules/
 frontend/dist/
 backend/dist/
 
+# Vite production output (repo root; used by Vercel static hosting)
+/public/
+
 # Vercel
 .vercel/
 .vercel
