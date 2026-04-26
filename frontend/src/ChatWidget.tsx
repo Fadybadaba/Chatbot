@@ -456,7 +456,15 @@ const ChatWidgetInner: React.FC = () => {
       )}
 
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => {
+          if (open) {
+            closeChat();
+            return;
+          }
+          setShowThanks(false);
+          setShowRating(false);
+          setOpen(true);
+        }}
         style={{
           width: 56,
           height: 56,

@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { getApprovedCvById, listApprovedCvs } from './approvedCvsStore';
+import { getCvDecisionsSummary } from './cvDecisionsStore';
 import { getChatRatingsSummary, listChatRatings } from './ratingsStore';
 
 function requireHrDashboardPassword(req: Request, res: Response): boolean {
@@ -86,6 +87,24 @@ export function createHrRouter(): Router {
           `${wantsDownload ? 'attachment' : 'inline'}; filename=\"${record.fileName.replace(/\"/g, '')}\"`,
         );
         res.send(record.pdfBytes);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  router.get(
+    '/cv-decisions/summary',
+    (req: Request, res: Response, next: NextFunction): void => {
+      try {
+        const role = req.user?.role;
+        if (role !== 'hr' && role !== 'admin') {
+          res.status(403).json({ error: 'Only HR can view CV decisions' });
+          return;
+        }
+        if (!requireHrDashboardPassword(req, res)) return;
+
+        res.json(getCvDecisionsSummary());
       } catch (err) {
         next(err);
       }

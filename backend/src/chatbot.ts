@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { sendApprovedEmail } from './email';
 import { addApprovedCv, JobKey, sha256Pdf } from './approvedCvsStore';
+import { addCvDecision } from './cvDecisionsStore';
 import { aiChat, isAiChatConfigured } from './aiChat';
 import { addChatRating } from './ratingsStore';
 
@@ -376,6 +377,24 @@ export function createChatRouter(): Router {
               '\n\n⚠️ No email address found inside the CV text, so we could not send an approval email.';
           }
         }
+
+        // Save decision (approved or rejected) for HR dashboard summary.
+        addCvDecision({
+          id: generateId('cvd'),
+          createdAt: new Date().toISOString(),
+          jobTitle: selectedJob,
+          approved: e.approved,
+          reasons: e.reasons,
+          candidateEmail: extractFirstEmail(extractedText),
+          score: e.score,
+          yearsDetected: e.yearsDetected,
+          fileName: file.originalname,
+          fileSizeKb: Math.round(file.size / 1024),
+          sessionId: session.id,
+          uploadedByUserId: userId,
+          extractedTextPreview: extractedText.slice(0, 800),
+          pdfBytes: file.buffer,
+        });
 
         const suggestionNote =
           !e.approved && approvedAlternatives.length > 0

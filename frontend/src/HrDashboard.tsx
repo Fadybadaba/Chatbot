@@ -39,6 +39,8 @@ export const HrDashboard: React.FC<{
   const [rows, setRows] = useState<ApprovedCvRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cvApprovedCount, setCvApprovedCount] = useState<number>(0);
+  const [cvRejectedCount, setCvRejectedCount] = useState<number>(0);
   const [ratingsAvg, setRatingsAvg] = useState<number | null>(null);
   const [ratingsCount, setRatingsCount] = useState<number>(0);
   const [ratingsDist, setRatingsDist] = useState<Record<number, number>>({});
@@ -72,6 +74,24 @@ export const HrDashboard: React.FC<{
     setLoading(true);
     setError(null);
     try {
+      const cvSummaryRes = await fetch(`${apiBaseUrl}/api/hr/cv-decisions/summary`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'x-user-id': userId,
+          'x-user-role': 'hr',
+          'x-hr-dashboard-password': hrDashboardPassword,
+        },
+      });
+      if (cvSummaryRes.ok) {
+        const s = (await cvSummaryRes.json()) as {
+          total: number;
+          approved: number;
+          rejected: number;
+        };
+        setCvApprovedCount(s.approved || 0);
+        setCvRejectedCount(s.rejected || 0);
+      }
+
       const ratingsRes = await fetch(`${apiBaseUrl}/api/hr/chat-ratings/summary`, {
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -275,6 +295,9 @@ export const HrDashboard: React.FC<{
           </div>
           <div style={{ color: '#cbd5e1', fontSize: 13, marginTop: 6 }}>
             Approved CVs (secure demo list).
+          </div>
+          <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>
+            CV decisions: {cvApprovedCount} approved / {cvRejectedCount} rejected
           </div>
           <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>
             Chat rating average: {ratingsAvg === null ? '—' : `${ratingsAvg}/5`} ({ratingsCount} ratings)

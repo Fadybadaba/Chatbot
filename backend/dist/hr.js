@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createHrRouter = createHrRouter;
 const express_1 = require("express");
 const approvedCvsStore_1 = require("./approvedCvsStore");
+const cvDecisionsStore_1 = require("./cvDecisionsStore");
 const ratingsStore_1 = require("./ratingsStore");
 function requireHrDashboardPassword(req, res) {
     const expected = (process.env.HR_DASHBOARD_PASSWORD || '').trim();
@@ -69,6 +70,21 @@ function createHrRouter() {
             const wantsDownload = String(req.query.download || '') === '1';
             res.setHeader('Content-Disposition', `${wantsDownload ? 'attachment' : 'inline'}; filename=\"${record.fileName.replace(/\"/g, '')}\"`);
             res.send(record.pdfBytes);
+        }
+        catch (err) {
+            next(err);
+        }
+    });
+    router.get('/cv-decisions/summary', (req, res, next) => {
+        try {
+            const role = req.user?.role;
+            if (role !== 'hr' && role !== 'admin') {
+                res.status(403).json({ error: 'Only HR can view CV decisions' });
+                return;
+            }
+            if (!requireHrDashboardPassword(req, res))
+                return;
+            res.json((0, cvDecisionsStore_1.getCvDecisionsSummary)());
         }
         catch (err) {
             next(err);
