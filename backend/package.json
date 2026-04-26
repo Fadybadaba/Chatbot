@@ -12,7 +12,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:pull": "prisma db pull"
+    "db:pull": "prisma db pull",
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
@@ -36,5 +37,8 @@
     "prisma": "5.22.0",
     "ts-node-dev": "*",
     "typescript": "*"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.ts"
   }
 }

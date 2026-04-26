@@ -40,3 +40,12 @@ model ApprovedCv {
   @@index([createdAt(sort: Desc)], map: "approved_cvs_created_at_idx")
   @@map("approved_cvs")
 }
+
+model JobCriteria {
+  jobTitle   String   @id @map("job_title")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  source     String?  @map("source")
+  criteria   String   @map("criteria")
+
+  @@map("job_criteria")
+}
