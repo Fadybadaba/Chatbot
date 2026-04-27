@@ -1,6 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { getApprovedCvById, listApprovedCvs } from './approvedCvsStore';
-import { getCvDecisionsSummary } from './cvDecisionsStore';
+import {
+  getCvAccuracyMetrics,
+  getCvDecisionsSummary,
+  labelCvDecision,
+  listCvDecisions,
+} from './cvDecisionsStore';
 import { getChatRatingsSummary, listChatRatings } from './ratingsStore';
 
 function requireHrDashboardPassword(req: Request, res: Response): boolean {
@@ -105,6 +110,88 @@ export function createHrRouter(): Router {
         if (!requireHrDashboardPassword(req, res)) return;
 
         res.json(getCvDecisionsSummary());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  router.get(
+    '/cv-decisions',
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      try {
+        const role = req.user?.role;
+        if (role !== 'hr' && role !== 'admin') {
+          res.status(403).json({ error: 'Only HR can view CV decisions' });
+          return;
+        }
+        if (!requireHrDashboardPassword(req, res)) return;
+
+        res.json(await listCvDecisions());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  router.post(
+    '/cv-decisions/:id/label',
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      try {
+        const role = req.user?.role;
+        if (role !== 'hr' && role !== 'admin') {
+          res.status(403).json({ error: 'Only HR can label CV decisions' });
+          return;
+        }
+        if (!requireHrDashboardPassword(req, res)) return;
+
+        const id = String(req.params.id);
+        const { expectedApproved, expectedMissingCriteria, labelNotes } = (req.body || {}) as {
+          expectedApproved?: boolean | null;
+          expectedMissingCriteria?: string[] | null;
+          labelNotes?: string | null;
+        };
+
+        // Normalize inputs
+        const exp =
+          expectedApproved === true
+            ? true
+            : expectedApproved === false
+              ? false
+              : null;
+        const missing =
+          Array.isArray(expectedMissingCriteria)
+            ? expectedMissingCriteria.map(s => String(s).trim()).filter(Boolean)
+            : null;
+        const notes = labelNotes == null ? null : String(labelNotes);
+
+        await labelCvDecision({
+          id,
+          expectedApproved: exp,
+          expectedMissingCriteria: missing,
+          labelNotes: notes,
+          labeledByUserId: req.user?.id || 'hr',
+        });
+
+        res.json({ ok: true });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  router.get(
+    '/cv-decisions/metrics',
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      try {
+        const role = req.user?.role;
+        if (role !== 'hr' && role !== 'admin') {
+          res.status(403).json({ error: 'Only HR can view metrics' });
+          return;
+        }
+        if (!requireHrDashboardPassword(req, res)) return;
+
+        res.json(await getCvAccuracyMetrics());
       } catch (err) {
         next(err);
       }

@@ -324,8 +324,8 @@ function createChatRouter() {
                         '\n\n⚠️ No email address found inside the CV text, so we could not send an approval email.';
                 }
             }
-            // Save decision (approved or rejected) for HR dashboard summary.
-            (0, cvDecisionsStore_1.addCvDecision)({
+            // Save decision (approved or rejected) for HR dashboard + evaluation.
+            await (0, cvDecisionsStore_1.addCvDecision)({
                 id: generateId('cvd'),
                 createdAt: new Date().toISOString(),
                 jobTitle: selectedJob,

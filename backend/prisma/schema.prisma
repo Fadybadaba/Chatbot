@@ -49,3 +49,30 @@ model JobCriteria {
 
   @@map("job_criteria")
 }
+
+model CvDecision {
+  id                   String    @id
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  jobTitle             String    @map("job_title")
+  predictedApproved    Boolean   @map("predicted_approved")
+  predictedReasons     Json      @map("predicted_reasons")
+  candidateEmail       String?   @map("candidate_email")
+  score                Int?      @map("score")
+  yearsDetected        Int?      @map("years_detected")
+  fileName             String    @map("file_name")
+  fileSizeKb           Int       @map("file_size_kb")
+  sessionId            String    @map("session_id")
+  uploadedByUserId     String    @map("uploaded_by_user_id")
+  extractedTextPreview String    @map("extracted_text_preview")
+  pdfSha256            String    @map("pdf_sha256")
+
+  // Manual HR labels (ground truth)
+  expectedApproved        Boolean? @map("expected_approved")
+  expectedMissingCriteria Json?    @map("expected_missing_criteria")
+  labelNotes              String?  @map("label_notes")
+  labeledAt               DateTime? @map("labeled_at") @db.Timestamptz(6)
+  labeledByUserId         String?  @map("labeled_by_user_id")
+
+  @@index([createdAt(sort: Desc)], map: "cv_decisions_created_at_idx")
+  @@map("cv_decisions")
+}

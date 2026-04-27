@@ -22,6 +22,27 @@ type ChatRating = {
   createdAt: string;
 };
 
+type CvDecision = {
+  id: string;
+  createdAt: string;
+  jobTitle: string;
+  approved: boolean;
+  reasons: string[];
+  candidateEmail: string | null;
+  yearsDetected: number | null;
+  score: number | null;
+  fileName: string;
+  fileSizeKb: number;
+  sessionId: string;
+  uploadedByUserId: string;
+  extractedTextPreview: string;
+  expectedApproved?: boolean | null;
+  expectedMissingCriteria?: string[] | null;
+  labelNotes?: string | null;
+  labeledAt?: string | null;
+  labeledByUserId?: string | null;
+};
+
 const JOB_FILTER_OPTIONS = [
   '',
   'Senior Full-Stack Developer',
@@ -41,6 +62,22 @@ export const HrDashboard: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [cvApprovedCount, setCvApprovedCount] = useState<number>(0);
   const [cvRejectedCount, setCvRejectedCount] = useState<number>(0);
+  const [cvDecisions, setCvDecisions] = useState<CvDecision[]>([]);
+  const [cvMetrics, setCvMetrics] = useState<{
+    labeledCount: number;
+    confusion: { tp: number; fp: number; tn: number; fn: number };
+    accuracy: number | null;
+    precision: number | null;
+    recall: number | null;
+    f1: number | null;
+  } | null>(null);
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  const [labelExpectedApproved, setLabelExpectedApproved] = useState<'unlabeled' | 'approved' | 'rejected'>(
+    'unlabeled',
+  );
+  const [labelMissingCriteriaText, setLabelMissingCriteriaText] = useState<string>('');
+  const [labelNotes, setLabelNotes] = useState<string>('');
+  const [labelSaving, setLabelSaving] = useState(false);
   const [ratingsAvg, setRatingsAvg] = useState<number | null>(null);
   const [ratingsCount, setRatingsCount] = useState<number>(0);
   const [ratingsDist, setRatingsDist] = useState<Record<number, number>>({});
@@ -90,6 +127,30 @@ export const HrDashboard: React.FC<{
         };
         setCvApprovedCount(s.approved || 0);
         setCvRejectedCount(s.rejected || 0);
+      }
+
+      const decisionsRes = await fetch(`${apiBaseUrl}/api/hr/cv-decisions`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'x-user-id': userId,
+          'x-user-role': 'hr',
+          'x-hr-dashboard-password': hrDashboardPassword,
+        },
+      });
+      if (decisionsRes.ok) {
+        setCvDecisions((await decisionsRes.json()) as CvDecision[]);
+      }
+
+      const metricsRes = await fetch(`${apiBaseUrl}/api/hr/cv-decisions/metrics`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'x-user-id': userId,
+          'x-user-role': 'hr',
+          'x-hr-dashboard-password': hrDashboardPassword,
+        },
+      });
+      if (metricsRes.ok) {
+        setCvMetrics((await metricsRes.json()) as typeof cvMetrics extends infer T ? Exclude<T, null> : never);
       }
 
       const ratingsRes = await fetch(`${apiBaseUrl}/api/hr/chat-ratings/summary`, {
@@ -145,6 +206,73 @@ export const HrDashboard: React.FC<{
       setError(e instanceof Error ? e.message : 'Failed to load approved CVs');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const selectedDecision = useMemo(
+    () => cvDecisions.find(d => d.id === selectedDecisionId) || null,
+    [cvDecisions, selectedDecisionId],
+  );
+
+  useEffect(() => {
+    if (!selectedDecision) return;
+    const exp =
+      selectedDecision.expectedApproved === true
+        ? 'approved'
+        : selectedDecision.expectedApproved === false
+          ? 'rejected'
+          : 'unlabeled';
+    setLabelExpectedApproved(exp);
+    setLabelMissingCriteriaText((selectedDecision.expectedMissingCriteria || []).join('\n'));
+    setLabelNotes(selectedDecision.labelNotes || '');
+  }, [selectedDecisionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveDecisionLabel = async () => {
+    if (!selectedDecision) return;
+    setLabelSaving(true);
+    setError(null);
+    try {
+      const expectedApproved =
+        labelExpectedApproved === 'approved'
+          ? true
+          : labelExpectedApproved === 'rejected'
+            ? false
+            : null;
+      const expectedMissingCriteria = labelMissingCriteriaText
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const res = await fetch(`${apiBaseUrl}/api/hr/cv-decisions/${selectedDecision.id}/label`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+          'x-user-id': userId,
+          'x-user-role': 'hr',
+          'x-hr-dashboard-password': hrDashboardPassword,
+        },
+        body: JSON.stringify({
+          expectedApproved,
+          expectedMissingCriteria: expectedMissingCriteria.length ? expectedMissingCriteria : null,
+          labelNotes: labelNotes.trim() ? labelNotes.trim() : null,
+        }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setError('Wrong password');
+          onLock();
+          return;
+        }
+        throw new Error(await res.text());
+      }
+
+      // Reload decisions + metrics so UI reflects latest labels.
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? `Failed to save label: ${e.message}` : 'Failed to save label');
+    } finally {
+      setLabelSaving(false);
     }
   };
 
@@ -299,6 +427,15 @@ export const HrDashboard: React.FC<{
           <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>
             CV decisions: {cvApprovedCount} approved / {cvRejectedCount} rejected
           </div>
+          {cvMetrics && (
+            <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>
+              Labeled: {cvMetrics.labeledCount} • Accuracy:{' '}
+              {cvMetrics.accuracy === null ? '—' : `${Math.round(cvMetrics.accuracy * 100)}%`} • Precision:{' '}
+              {cvMetrics.precision === null ? '—' : `${Math.round(cvMetrics.precision * 100)}%`} • Recall:{' '}
+              {cvMetrics.recall === null ? '—' : `${Math.round(cvMetrics.recall * 100)}%`} • F1:{' '}
+              {cvMetrics.f1 === null ? '—' : `${Math.round(cvMetrics.f1 * 100)}%`}
+            </div>
+          )}
           <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>
             Chat rating average: {ratingsAvg === null ? '—' : `${ratingsAvg}/5`} ({ratingsCount} ratings)
           </div>
@@ -391,6 +528,185 @@ export const HrDashboard: React.FC<{
           {error}
         </div>
       )}
+
+      <div
+        style={{
+          marginBottom: 14,
+          padding: 14,
+          borderRadius: 16,
+          border: '1px solid rgba(255,255,255,0.14)',
+          background:
+            'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <div style={{ fontWeight: 900, letterSpacing: -0.2, marginBottom: 10 }}>
+          CV Screening Evaluation (manual labels)
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
+          <div
+            style={{
+              borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.10)',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: 10, fontSize: 12, color: '#cbd5e1', background: 'rgba(2,6,23,0.25)' }}>
+              Recent CV decisions (click one to label)
+            </div>
+            <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+              {cvDecisions.length === 0 ? (
+                <div style={{ padding: 10, fontSize: 12, color: '#94a3b8' }}>
+                  No CV decisions yet. Upload CVs in chat to generate data.
+                </div>
+              ) : (
+                cvDecisions.map(d => {
+                  const selected = d.id === selectedDecisionId;
+                  const labeled = d.expectedApproved === true || d.expectedApproved === false;
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setSelectedDecisionId(d.id)}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: 10,
+                        border: 'none',
+                        borderTop: '1px solid rgba(255,255,255,0.06)',
+                        background: selected ? 'rgba(59,130,246,0.18)' : 'transparent',
+                        color: '#e5e7eb',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ fontWeight: 800, fontSize: 12 }}>{d.jobTitle}</div>
+                        <div style={{ fontSize: 12, color: labeled ? '#34d399' : '#94a3b8' }}>
+                          {labeled ? 'Labeled' : 'Unlabeled'}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: 4 }}>
+                        Predicted: {d.approved ? 'APPROVED' : 'REJECTED'} • {d.fileName} • {new Date(d.createdAt).toLocaleString()}
+                      </div>
+                      {d.reasons?.length ? (
+                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                          Reasons: {d.reasons.slice(0, 2).join('; ')}
+                          {d.reasons.length > 2 ? '…' : ''}
+                        </div>
+                      ) : null}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.10)',
+              padding: 12,
+            }}
+          >
+            {!selectedDecision ? (
+              <div style={{ fontSize: 12, color: '#94a3b8' }}>Select a CV decision on the left.</div>
+            ) : (
+              <>
+                <div style={{ fontWeight: 900, marginBottom: 8 }}>
+                  Label: {selectedDecision.jobTitle}
+                </div>
+                <div style={{ fontSize: 12, color: '#cbd5e1', marginBottom: 8 }}>
+                  Predicted: <b>{selectedDecision.approved ? 'APPROVED' : 'REJECTED'}</b>
+                </div>
+
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <label style={{ fontSize: 12, color: '#cbd5e1' }}>
+                    Expected outcome (ground truth)
+                    <select
+                      value={labelExpectedApproved}
+                      onChange={e => setLabelExpectedApproved(e.target.value as any)}
+                      style={{
+                        width: '100%',
+                        marginTop: 6,
+                        padding: '8px 10px',
+                        borderRadius: 12,
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        background: 'rgba(2,6,23,0.45)',
+                        color: '#e5e7eb',
+                        fontSize: 12,
+                      }}
+                    >
+                      <option value="unlabeled">Unlabeled</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </label>
+
+                  <label style={{ fontSize: 12, color: '#cbd5e1' }}>
+                    Expected missing criteria (one per line)
+                    <textarea
+                      value={labelMissingCriteriaText}
+                      onChange={e => setLabelMissingCriteriaText(e.target.value)}
+                      rows={5}
+                      style={{
+                        width: '100%',
+                        marginTop: 6,
+                        padding: '8px 10px',
+                        borderRadius: 12,
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        background: 'rgba(2,6,23,0.45)',
+                        color: '#e5e7eb',
+                        fontSize: 12,
+                        resize: 'vertical',
+                      }}
+                      placeholder="e.g.\nMissing mandatory keyword: Python\nMissing mandatory certificate: CMA"
+                    />
+                  </label>
+
+                  <label style={{ fontSize: 12, color: '#cbd5e1' }}>
+                    Notes (optional)
+                    <textarea
+                      value={labelNotes}
+                      onChange={e => setLabelNotes(e.target.value)}
+                      rows={2}
+                      style={{
+                        width: '100%',
+                        marginTop: 6,
+                        padding: '8px 10px',
+                        borderRadius: 12,
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        background: 'rgba(2,6,23,0.45)',
+                        color: '#e5e7eb',
+                        fontSize: 12,
+                        resize: 'vertical',
+                      }}
+                      placeholder="Any HR notes about why this should be approved/rejected…"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={saveDecisionLabel}
+                    disabled={labelSaving || loading}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: '1px solid rgba(34,197,94,0.35)',
+                      background:
+                        'linear-gradient(180deg, rgba(34,197,94,0.95) 0%, rgba(22,163,74,0.95) 100%)',
+                      color: '#052e16',
+                      fontWeight: 900,
+                      cursor: labelSaving || loading ? 'wait' : 'pointer',
+                    }}
+                  >
+                    {labelSaving ? 'Saving…' : 'Save label'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div
         style={{

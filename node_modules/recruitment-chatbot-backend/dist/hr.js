@@ -90,6 +90,70 @@ function createHrRouter() {
             next(err);
         }
     });
+    router.get('/cv-decisions', async (req, res, next) => {
+        try {
+            const role = req.user?.role;
+            if (role !== 'hr' && role !== 'admin') {
+                res.status(403).json({ error: 'Only HR can view CV decisions' });
+                return;
+            }
+            if (!requireHrDashboardPassword(req, res))
+                return;
+            res.json(await (0, cvDecisionsStore_1.listCvDecisions)());
+        }
+        catch (err) {
+            next(err);
+        }
+    });
+    router.post('/cv-decisions/:id/label', async (req, res, next) => {
+        try {
+            const role = req.user?.role;
+            if (role !== 'hr' && role !== 'admin') {
+                res.status(403).json({ error: 'Only HR can label CV decisions' });
+                return;
+            }
+            if (!requireHrDashboardPassword(req, res))
+                return;
+            const id = String(req.params.id);
+            const { expectedApproved, expectedMissingCriteria, labelNotes } = (req.body || {});
+            // Normalize inputs
+            const exp = expectedApproved === true
+                ? true
+                : expectedApproved === false
+                    ? false
+                    : null;
+            const missing = Array.isArray(expectedMissingCriteria)
+                ? expectedMissingCriteria.map(s => String(s).trim()).filter(Boolean)
+                : null;
+            const notes = labelNotes == null ? null : String(labelNotes);
+            await (0, cvDecisionsStore_1.labelCvDecision)({
+                id,
+                expectedApproved: exp,
+                expectedMissingCriteria: missing,
+                labelNotes: notes,
+                labeledByUserId: req.user?.id || 'hr',
+            });
+            res.json({ ok: true });
+        }
+        catch (err) {
+            next(err);
+        }
+    });
+    router.get('/cv-decisions/metrics', async (req, res, next) => {
+        try {
+            const role = req.user?.role;
+            if (role !== 'hr' && role !== 'admin') {
+                res.status(403).json({ error: 'Only HR can view metrics' });
+                return;
+            }
+            if (!requireHrDashboardPassword(req, res))
+                return;
+            res.json(await (0, cvDecisionsStore_1.getCvAccuracyMetrics)());
+        }
+        catch (err) {
+            next(err);
+        }
+    });
     router.get('/chat-ratings/summary', async (req, res, next) => {
         try {
             const role = req.user?.role;

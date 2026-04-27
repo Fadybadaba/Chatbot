@@ -378,8 +378,8 @@ export function createChatRouter(): Router {
           }
         }
 
-        // Save decision (approved or rejected) for HR dashboard summary.
-        addCvDecision({
+        // Save decision (approved or rejected) for HR dashboard + evaluation.
+        await addCvDecision({
           id: generateId('cvd'),
           createdAt: new Date().toISOString(),
           jobTitle: selectedJob,
