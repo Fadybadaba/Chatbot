@@ -1,4 +1,5 @@
 import express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { json, urlencoded } from 'body-parser';
@@ -17,6 +18,25 @@ export function createApp() {
   app.use(urlencoded({ extended: true }));
 
   registerRoutes(app);
+
+  // Ensure API errors return JSON (not HTML).
+  // This keeps frontend error handling readable and avoids `[object Object]` pages.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === 'string'
+          ? err
+          : 'Internal Server Error';
+
+    // Log full error server-side for debugging.
+    // eslint-disable-next-line no-console
+    console.error(err);
+
+    res.status(500).json({ error: message });
+  });
+
   return app;
 }
 

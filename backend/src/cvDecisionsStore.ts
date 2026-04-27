@@ -1,6 +1,16 @@
 import { JobKey, sha256Pdf } from './approvedCvsStore';
 import { getSupabaseAdmin } from './supabaseAdmin';
 
+function isSupabaseMissingTableError(err: unknown): boolean {
+  // Supabase PostgREST returns PGRST205 when table isn't in schema cache.
+  return Boolean(
+    err &&
+      typeof err === 'object' &&
+      'code' in err &&
+      (err as { code?: unknown }).code === 'PGRST205',
+  );
+}
+
 export type CvDecisionRecord = {
   id: string;
   createdAt: string;
@@ -58,8 +68,9 @@ export async function addCvDecision(
       extracted_text_preview: record.extractedTextPreview,
       pdf_sha256: record.pdfSha256,
     });
-    if (error) throw error;
-    return;
+    if (!error) return;
+    // If the table doesn't exist yet, fall back to in-memory so CV screening still works in dev.
+    if (!isSupabaseMissingTableError(error)) throw error;
   }
 
   // De-dupe by (jobTitle + pdf hash). Keep newest record.
@@ -92,7 +103,10 @@ export async function listCvDecisions(limit = 200): Promise<CvDecisionRecord[]> 
       )
       .order('created_at', { ascending: false })
       .limit(limit);
-    if (error) throw error;
+    if (error) {
+      if (!isSupabaseMissingTableError(error)) throw error;
+      return decisions.slice(0, limit);
+    }
     return (data || []).map(r => ({
       id: r.id as string,
       createdAt: r.created_at as string,
@@ -136,8 +150,8 @@ export async function labelCvDecision(params: {
       labeled_at: now,
       labeled_by_user_id: params.labeledByUserId,
     }).eq('id', params.id);
-    if (error) throw error;
-    return;
+    if (!error) return;
+    if (!isSupabaseMissingTableError(error)) throw error;
   }
 
   const rec = decisions.find(d => d.id === params.id);

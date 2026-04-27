@@ -82,7 +82,12 @@ async function postChatCv(params: {
   });
 
   if (!res.ok) {
+    const ct = res.headers.get('content-type') || '';
     const errBody = await res.text();
+    // If we got an HTML error page, show a clean message.
+    if (ct.includes('text/html')) {
+      throw new Error('Server error while screening the CV. Check backend logs.');
+    }
     throw new Error(errBody || 'Failed to upload CV');
   }
 
