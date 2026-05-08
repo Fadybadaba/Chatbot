@@ -26,7 +26,7 @@
     "helmet": "*",
     "multer": "*",
     "nodemailer": "^8.0.4",
-    "pdf-parse": "^2.4.5"
+    "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
     "@types/body-parser": "*",
@@ -34,6 +34,7 @@
     "@types/express": "*",
     "@types/multer": "*",
     "@types/node": "*",
+    "@types/pdf-parse": "^1.1.5",
     "prisma": "5.22.0",
     "ts-node-dev": "*",
     "typescript": "*"

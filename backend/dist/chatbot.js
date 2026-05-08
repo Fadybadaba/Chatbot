@@ -139,10 +139,13 @@ function evaluateCvForJob(extractedText, jobTitle) {
     };
 }
 async function extractTextFromPdfBuffer(fileBuffer) {
-    const { PDFParse } = await Promise.resolve().then(() => __importStar(require('pdf-parse')));
-    const parser = new PDFParse({ data: fileBuffer });
-    const parsed = await parser.getText();
-    return (parsed.text || '').toString();
+    // `pdf-parse` v2+ uses PDF.js builds that can require DOMMatrix/canvas in serverless.
+    // v1.1.1 is Node-friendly for text extraction and avoids DOMMatrix issues.
+    const mod = await Promise.resolve().then(() => __importStar(require('pdf-parse')));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parse = mod.default || mod;
+    const parsed = await parse(fileBuffer);
+    return (parsed?.text || '').toString();
 }
 function createChatRouter() {
     const router = (0, express_1.Router)();
