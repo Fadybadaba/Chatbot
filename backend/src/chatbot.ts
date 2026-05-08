@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import pdfParse from 'pdf-parse';
 import { sendApprovedEmail } from './email';
 import { addApprovedCv, JobKey, sha256Pdf } from './approvedCvsStore';
 import { addCvDecision } from './cvDecisionsStore';
@@ -135,13 +136,17 @@ function evaluateCvForJob(extractedText: string, jobTitle: JobKey) {
 }
 
 async function extractTextFromPdfBuffer(fileBuffer: Buffer): Promise<string> {
-  // `pdf-parse` v2+ uses PDF.js builds that can require DOMMatrix/canvas in serverless.
-  // v1.1.1 is Node-friendly for text extraction and avoids DOMMatrix issues.
-  const mod = await import('pdf-parse');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parse = (mod as any).default || (mod as any);
-  const parsed = await parse(fileBuffer);
-  return (parsed?.text || '').toString();
+  // NOTE: If pdf-parse is called with `undefined`, it tries to open its internal test file
+  // (`./test/data/05-versions-space.pdf`) which explodes on Vercel. Guard hard here.
+  const buf = Buffer.isBuffer(fileBuffer)
+    ? fileBuffer
+    : Buffer.from(fileBuffer as unknown as Uint8Array);
+  if (!buf || buf.length === 0) {
+    throw new Error('Empty PDF upload (no bytes received).');
+  }
+
+  const parsed = await pdfParse(buf);
+  return (parsed.text || '').toString();
 }
 
 export function createChatRouter(): Router {
