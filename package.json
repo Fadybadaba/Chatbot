@@ -1,5 +1,5 @@
 {
-  "name": "workshop_starter",
+  "name": "recruitment-chatbot-monorepo",
   "private": true,
   "description": "Workspace for recruitment chatbot plugin (backend + frontend)",
   "version": "0.1.0",

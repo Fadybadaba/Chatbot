@@ -1,7 +1,7 @@
 ## Deploy: Single Vercel App (Frontend + Backend) + Supabase (DB)
 
 This project is set up to deploy as **one Vercel project**:
-- Frontend is built to `frontend/dist`
+- Frontend is built to the repo-root `public/` folder (see `frontend/vite.config.ts` and root `vercel.json`).
 - Backend runs as a **Vercel Serverless Function** at `api/index.ts` and serves `/api/*`
 
 ### 0) Prerequisites
@@ -68,9 +68,9 @@ Vercel → **New Project** → Import your repo.
 ### 3.2 Build settings
 Set:
 - **Build Command**: `npm run build`
-- **Output Directory**: `frontend/dist`
+- **Output Directory**: `public`
 
-This matches the repo root scripts.
+This matches `vercel.json` and `frontend/vite.config.ts` (production build writes to the repo-root `public/` folder).
 
 ### 3.3 Environment variables (Vercel → Project → Settings → Environment Variables)
 Add:
@@ -103,6 +103,6 @@ After deploy:
 ## Notes / Architecture
 - Vercel routing is configured in `vercel.json`
   - `/api/*` → serverless function (`api/index.ts`) which runs the Express app
-  - everything else → `frontend/dist/index.html`
+  - everything else → static files in `public/` (`index.html` for SPA)
 - Locally, backend still runs with `backend/src/server.ts`
 

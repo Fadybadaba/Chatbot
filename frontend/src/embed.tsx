@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ChatWidget } from './ChatWidget';
+import { ChatWidget } from './components/ChatWidget';
 
 declare global {
   interface Window {

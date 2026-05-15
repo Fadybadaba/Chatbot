@@ -1,11 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
-import { sendApprovedEmail } from './email';
-import { addApprovedCv, JobKey, sha256Pdf } from './approvedCvsStore';
-import { addCvDecision } from './cvDecisionsStore';
-import { aiChat, isAiChatConfigured } from './aiChat';
-import { addChatRating } from './ratingsStore';
+import { sendApprovedEmail } from '../services/email';
+import { addApprovedCv, JobKey, sha256Pdf } from '../services/approvedCvsStore';
+import { addCvDecision } from '../services/cvDecisionsStore';
+import { aiChat, isAiChatConfigured } from '../services/aiChat';
+import { addChatRating } from '../services/ratingsStore';
 
 type SenderType = 'candidate' | 'hr' | 'bot';
 

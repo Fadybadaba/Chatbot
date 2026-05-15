@@ -18,3 +18,8 @@ backend/dist/
 # Vercel
 .vercel/
 .vercel
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo

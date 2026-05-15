@@ -1,5 +1,5 @@
 import { Express, Request, Response, Router } from 'express';
-import { attachAuthMiddleware } from './simpleAuth';
+import { attachAuthMiddleware } from '../middleware/simpleAuth';
 import { createChatRouter } from './chatbot';
 import { createJobsRouter } from './jobs';
 import { createHrRouter } from './hr';

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChatWidget } from './ChatWidget';
+import { ChatWidget } from '../components/ChatWidget';
 import { HrDashboard } from './HrDashboard';
 import { RatingsDashboard } from './RatingsDashboard';
 

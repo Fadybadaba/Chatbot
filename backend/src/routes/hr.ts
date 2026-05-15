@@ -1,12 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { getApprovedCvById, listApprovedCvs } from './approvedCvsStore';
+import { getApprovedCvById, listApprovedCvs } from '../services/approvedCvsStore';
 import {
   getCvAccuracyMetrics,
   getCvDecisionsSummary,
   labelCvDecision,
   listCvDecisions,
-} from './cvDecisionsStore';
-import { getChatRatingsSummary, listChatRatings } from './ratingsStore';
+} from '../services/cvDecisionsStore';
+import { getChatRatingsSummary, listChatRatings } from '../services/ratingsStore';
 
 function requireHrDashboardPassword(req: Request, res: Response): boolean {
   const expected = (process.env.HR_DASHBOARD_PASSWORD || '').trim();
